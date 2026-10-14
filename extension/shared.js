@@ -44,8 +44,14 @@
   }
 
   // 受け口の応答(HTTP の状態)を、画面に出す 1 行にする
-  function reasonFor(status, body) {
-    if (status === 401) return '合言葉が違うか、取り消されています(teru.page の /app/sat で作り直す)';
+  function tokenGuide(token) {
+    return /^satx_/.test(String(token || '')) && !String(token).startsWith('satx_u_')
+      ? 'teru.page の /app/sat で合言葉を作り直す'
+      : 'https://teru.page/sat で登録して合言葉をもらう';
+  }
+
+  function reasonFor(status, body, token) {
+    if (status === 401) return '合言葉が違うか、取り消されています(' + tokenGuide(token) + ')';
     if (status === 413) return '大きすぎます(1 回 2 MB まで)';
     if (status === 429) return '送りすぎです(1 分に 30 回まで)。少し待ってください';
     if (status === 404) return 'URL が違うようです(https://teru.page のままか確かめる)';
@@ -58,7 +64,7 @@
   var ERROR_TYPES = ['本文に無い因果や区別を足した', '本文と逆', '語彙を知らなかった', '選択肢を本文や表と照合していない',
     '挿入句に引っぱられた', '二択で外した', '時間切れ', '読み違え', '選択肢を最後まで読まなかった', '本文を飛ばして読んだ', 'その他'];
 
-  var api = { ERROR_TYPES: ERROR_TYPES, buildPayload: buildPayload, reasonFor: reasonFor, fitBytes: fitBytes, HTML_BUDGET: HTML_BUDGET, TEXT_BUDGET: TEXT_BUDGET };
+  var api = { ERROR_TYPES: ERROR_TYPES, buildPayload: buildPayload, reasonFor: reasonFor, tokenGuide: tokenGuide, fitBytes: fitBytes, HTML_BUDGET: HTML_BUDGET, TEXT_BUDGET: TEXT_BUDGET };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   root.SatLoggerShared = api;
 })(typeof self !== 'undefined' ? self : this);

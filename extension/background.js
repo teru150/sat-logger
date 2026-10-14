@@ -11,7 +11,7 @@ function satEndpoint(base, token, action) {
 
 async function send(payload) {
   var saved = await chrome.storage.local.get(['baseUrl', 'token']);
-  if (!saved.token) return { ok: false, reason: '合言葉が未設定です(拡張機能のアイコンを押して、teru.page の /app/sat で作った合言葉を貼る)' };
+  if (!saved.token) return { ok: false, reason: '合言葉が未設定です(' + SatLoggerShared.tokenGuide('') + ')' };
   var base = String(saved.baseUrl || DEFAULT_URL).replace(/\/+$/, '');
   try {
     var res = await fetch(satEndpoint(base, saved.token, 'capture'), {
@@ -22,7 +22,7 @@ async function send(payload) {
     var body = {};
     try { body = await res.json(); } catch (e) { /* 本文が JSON でなくてもよい */ }
     if (res.ok) return { ok: true, saved: body.saved || '' };
-    return { ok: false, status: res.status, reason: SatLoggerShared.reasonFor(res.status, body) };
+    return { ok: false, status: res.status, reason: SatLoggerShared.reasonFor(res.status, body, saved.token) };
   } catch (e) {
     return { ok: false, reason: 'つながりませんでした(ネットと、URL が https:// で始まっているかを確かめる)' };
   }
@@ -31,7 +31,7 @@ async function send(payload) {
 // 1 問ぶんを SAT 問題ログに記録する(POST /app/sat/log、合言葉で受ける)。重複(同じ問題)はサーバーが断って duplicate: true を返す
 async function log(payload) {
   var saved = await chrome.storage.local.get(['baseUrl', 'token']);
-  if (!saved.token) return { ok: false, reason: '合言葉が未設定です(拡張機能のアイコンを押して、teru.page の /app/sat で作った合言葉を貼る)' };
+  if (!saved.token) return { ok: false, reason: '合言葉が未設定です(' + SatLoggerShared.tokenGuide('') + ')' };
   var base = String(saved.baseUrl || DEFAULT_URL).replace(/\/+$/, '');
   try {
     var res = await fetch(satEndpoint(base, saved.token, 'log'), {
@@ -44,7 +44,7 @@ async function log(payload) {
     if (res.ok) return { ok: true, duplicate: !!body.duplicate, entry: body.entry || null,
       saved: body.saved || 0, duplicates: body.duplicates || 0,
       updated: body.updated || 0, cells: body.cells || 0, missing: body.missing || 0 };
-    return { ok: false, status: res.status, reason: (body && body.message) || SatLoggerShared.reasonFor(res.status, body) };
+    return { ok: false, status: res.status, reason: res.status === 401 ? SatLoggerShared.reasonFor(res.status, body, saved.token) : (body && body.message) || SatLoggerShared.reasonFor(res.status, body, saved.token) };
   } catch (e) {
     return { ok: false, reason: 'つながりませんでした(ネットと、URL が https:// で始まっているかを確かめる)' };
   }
@@ -53,7 +53,7 @@ async function log(payload) {
 // 直前に記録した 1 問を取り消す(POST /app/sat/undo、合言葉。サーバーは記録から 10 分以内の行だけ受ける)
 async function undo(id) {
   var saved = await chrome.storage.local.get(['baseUrl', 'token']);
-  if (!saved.token) return { ok: false, reason: '合言葉が未設定です' };
+  if (!saved.token) return { ok: false, reason: '合言葉が未設定です(' + SatLoggerShared.tokenGuide('') + ')' };
   var base = String(saved.baseUrl || DEFAULT_URL).replace(/\/+$/, '');
   try {
     var res = await fetch(satEndpoint(base, saved.token, 'undo'), {
@@ -64,7 +64,7 @@ async function undo(id) {
     var body = {};
     try { body = await res.json(); } catch (e) { /* 本文が JSON でなくてもよい */ }
     if (res.ok) return { ok: !!body.removed, reason: body.removed ? '' : 'その行は見つかりませんでした' };
-    return { ok: false, status: res.status, reason: (body && body.message) || SatLoggerShared.reasonFor(res.status, body) };
+    return { ok: false, status: res.status, reason: res.status === 401 ? SatLoggerShared.reasonFor(res.status, body, saved.token) : (body && body.message) || SatLoggerShared.reasonFor(res.status, body, saved.token) };
   } catch (e) {
     return { ok: false, reason: 'つながりませんでした' };
   }
@@ -73,7 +73,7 @@ async function undo(id) {
 // 記録した誤答に、間違いの型をあとから付ける(POST /app/sat/type、合言葉。サーバーは記録から 10 分以内の行だけ受ける)
 async function setType(id, errorType) {
   var saved = await chrome.storage.local.get(['baseUrl', 'token']);
-  if (!saved.token) return { ok: false, reason: '合言葉が未設定です' };
+  if (!saved.token) return { ok: false, reason: '合言葉が未設定です(' + SatLoggerShared.tokenGuide('') + ')' };
   var base = String(saved.baseUrl || DEFAULT_URL).replace(/\/+$/, '');
   try {
     var res = await fetch(satEndpoint(base, saved.token, 'type'), {
@@ -84,7 +84,7 @@ async function setType(id, errorType) {
     var body = {};
     try { body = await res.json(); } catch (e) { /* 本文が JSON でなくてもよい */ }
     if (res.ok) return { ok: true };
-    return { ok: false, status: res.status, reason: (body && body.message) || SatLoggerShared.reasonFor(res.status, body) };
+    return { ok: false, status: res.status, reason: res.status === 401 ? SatLoggerShared.reasonFor(res.status, body, saved.token) : (body && body.message) || SatLoggerShared.reasonFor(res.status, body, saved.token) };
   } catch (e) {
     return { ok: false, reason: 'つながりませんでした' };
   }

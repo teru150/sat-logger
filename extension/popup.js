@@ -9,7 +9,8 @@
   chrome.storage.local.get(['baseUrl', 'token']).then(function (s) {
     $('url').value = s.baseUrl || DEFAULT_URL;
     $('token').value = s.token || '';
-    if (!s.token) { $('settings').open = true; say('先に「設定」で合言葉を貼ってください。', false); }
+    $('token-hint').textContent = SatLoggerShared.tokenGuide(s.token) + '。合言葉を設定に貼って保存してください。';
+    if (!s.token) { $('settings').open = true; say(SatLoggerShared.tokenGuide('') + '。先に「設定」で合言葉を貼ってください。', false); }
   });
 
   $('save').addEventListener('click', async function () {
@@ -22,8 +23,9 @@
         if (!granted) { say('その URL に送る許可が得られませんでした。', false); return; }
       }
     } catch (e) { say('URL の形が違います(https://teru.page のように)。', false); return; }
-    if (!/^satx_/.test(token)) { say('合言葉は satx_ で始まります。teru.page の /app/sat で作ったものを貼ってください。', false); return; }
+    if (!/^satx_/.test(token)) { say('合言葉は satx_ で始まります。' + SatLoggerShared.tokenGuide(token) + '。', false); return; }
     await chrome.storage.local.set({ baseUrl: url, token: token });
+    $('token-hint').textContent = SatLoggerShared.tokenGuide(token) + '。合言葉を設定に貼って保存してください。';
     say('保存しました。', true);
   });
 
