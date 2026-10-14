@@ -5,7 +5,7 @@ SAT の勉強の記録を自動で取る道具です。2 つあります。
 | 何 | どこで動く | 何を記録するか |
 |---|---|---|
 | `bluebook/` | Mac(Bluebook の練習テスト中) | 1 問ごとの **かかった時間・選んだ答え・見直した回数**、問題文と選択肢 |
-| `extension/` | Chrome(College Board の Question Bank など) | 解いた問題と正誤(準備中) |
+| `extension/` | Chrome(College Board の Question Bank、Ascent、MyPractice) | 解いた問題と正誤、模試の結果の取り込み |
 
 ## 最初に読んでください
 
@@ -27,7 +27,9 @@ SAT の勉強の記録を自動で取る道具です。2 つあります。
 
 ### 1. 受け口に登録して合言葉をもらう
 
-`https://teru.page/sat` を開き、名前・パスワード・招待コード(Teru からもらう)で登録します。登録すると **合言葉** が表示されます。これをあとで設定に貼ります。合言葉は他の人に教えないでください。
+`https://teru.page/sat` を開き、名前・パスワード・招待コード(Teru からもらう)で登録します。登録した直後に **合言葉** が一度だけ表示されるので、控えておきます(あとから見られません。失くしたら登録し直し)。合言葉は他の人に教えないでください。
+
+> Bluebook の記録の受け口(`https://teru.page/sat/bluebook`)は **まだ公開前** です(2026-10-14)。公開されるまで、Bluebook の記録は手元の `visits.jsonl` とキューに溜まり、公開後に自動で送られます。Chrome 拡張の方(下の「Chrome 拡張」)はもう使えます。
 
 ### 2. このフォルダを置く
 
@@ -93,6 +95,18 @@ tail -n 5 ~/Library/Application\ Support/sat-logger/tracker.log
 - しばらく止める: `launchctl bootout "gui/$(id -u)" ~/Library/LaunchAgents/jp.sat-logger.bluebook.plist`
 - 送るのだけ止める: 設定の `"send": true` を `false` に(手元の記録は続く)
 - 完全に消す: 上の bootout のあと、`~/sat-logger`、`~/Library/LaunchAgents/jp.sat-logger.bluebook.plist`、`~/Library/Application Support/sat-logger` を消す。アクセシビリティの一覧から `ax_probe` も消す
+
+## Chrome 拡張(Question Bank・Ascent・MyPractice の記録)
+
+`extension/` が Chrome の拡張機能(v0.7.0)です。
+
+1. `https://teru.page/sat` で登録し、合言葉を控える(上の手順 1 と同じ合言葉です)
+2. Chrome で `chrome://extensions` を開き、右上の「デベロッパーモード」をオン → 「パッケージ化されていない拡張機能を読み込む」→ `~/sat-logger/extension` を選ぶ
+3. ツールバーの拡張のアイコンを押し、設定に URL = `https://teru.page` と合言葉を貼る
+4. Question Bank / Ascent で問題を解くと記録されます。MyPractice の模試の Details を開き「この模試を全部記録」を押すと、模試の結果(正誤・分野)が取り込まれます
+5. `https://teru.page/sat` に名前とパスワードで入ると、自分の一覧と模試の結果が見られます
+
+Google Sheet などを自分で作る必要はありません。
 
 ## 何が記録されるか(1 行の中身)
 

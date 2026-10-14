@@ -1,0 +1,56 @@
+{
+  "manifest_version": 3,
+  "name": "SAT ロガー",
+  "version": "0.7.0",
+  "description": "Ascent の見直し画面と Question Bank の問題を、1 問ずつ自動で teru.page の SAT 問題ログに記録する(画面をそのまま保存するボタンも残す)。",
+  "permissions": [
+    "storage",
+    "activeTab",
+    "scripting"
+  ],
+  "host_permissions": [
+    "https://teru.page/*"
+  ],
+  "optional_host_permissions": [
+    "https://*/*",
+    "http://127.0.0.1/*",
+    "http://localhost/*"
+  ],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "action": {
+    "default_title": "SAT ロガー",
+    "default_popup": "popup.html",
+    "default_icon": {
+      "48": "icons/icon48.png",
+      "128": "icons/icon128.png"
+    }
+  },
+  "icons": {
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "https://climb.ascenttestprep.com/*",
+        "https://*.ascenttestprep.com/*",
+        "https://*.mentomind.com/*",
+        "https://satsuiteeducatorquestionbank.collegeboard.org/*"
+      ],
+      "js": [
+        "shared.js",
+        "parse.js",
+        "targets.js",
+        "content.js"
+      ],
+      "run_at": "document_idle"
+    },
+    {
+      "matches": ["https://mypractice.collegeboard.org/*"],
+      "js": ["shared.js", "parse.js", "mypractice.js"],
+      "run_at": "document_idle"
+    }
+  ]
+}

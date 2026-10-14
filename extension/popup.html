@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<title>SAT ロガー</title>
+<link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <h1>SAT ロガー</h1>
+  <p class="lead"><b>問題の記録は自動です。</b>Ascent は見直し画面を開くだけ。Question Bank は、問題を開いて「Show correct answer and explanation」を押してから、右下の帯で選んだ答えと「記録」を押します。</p>
+  <p class="lead">下のボタンは、うまく記録できない時に<b>今の画面をそのまま保存する</b>予備です(SAT 問題ログには書きません)。</p>
+  <button id="send" type="button" class="primary">今の画面を保存(予備)</button>
+  <p id="status" role="status"></p>
+  <details id="settings">
+    <summary>設定(最初に 1 回)</summary>
+    <label>teru.page の URL<input id="url" type="url" placeholder="https://teru.page" spellcheck="false"></label>
+    <label>合言葉<input id="token" type="password" placeholder="satx_… を貼る" autocomplete="off" spellcheck="false"></label>
+    <button id="save" type="button">保存</button>
+    <p class="hint">合言葉は teru.page の SAT 問題ログ(/app/sat)の一番下で作ります。1 台に 1 つ。</p>
+  </details>
+  <script src="shared.js"></script>
+  <script src="popup.js"></script>
+</body>
+</html>
