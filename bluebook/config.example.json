@@ -1,0 +1,7 @@
+{
+  "url": "https://teru.page/sat/bluebook",
+  "token": "ここに teru.page/sat でもらった合言葉",
+  "src": "この Mac の呼び名(半角英数とハイフン。例: my-mac)",
+  "reader": "probe",
+  "send": true
+}

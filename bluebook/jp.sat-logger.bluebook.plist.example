@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN"
+  "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>jp.sat-logger.bluebook</string>
+
+  <key>ProgramArguments</key>
+  <array>
+    <string>/usr/bin/python3</string>
+    <string>__ABSOLUTE_HOME__/sat-logger/bluebook/tracker.py</string>
+  </array>
+
+  <key>WorkingDirectory</key>
+  <string>__ABSOLUTE_HOME__/sat-logger</string>
+
+  <key>RunAtLoad</key>
+  <true/>
+  <key>KeepAlive</key>
+  <true/>
+  <key>ThrottleInterval</key>
+  <integer>10</integer>
+  <key>ProcessType</key>
+  <string>Background</string>
+
+  <key>EnvironmentVariables</key>
+  <dict>
+    <key>PATH</key>
+    <string>/usr/local/bin:/opt/homebrew/bin:/usr/bin:/bin:/usr/sbin:/sbin</string>
+    <key>PYTHONUNBUFFERED</key>
+    <string>1</string>
+    <key>USER</key>
+    <string>__USER__</string>
+  </dict>
+
+  <key>StandardOutPath</key>
+  <string>__ABSOLUTE_HOME__/Library/Application Support/sat-logger/tracker.log</string>
+  <key>StandardErrorPath</key>
+  <string>__ABSOLUTE_HOME__/Library/Application Support/sat-logger/tracker.err.log</string>
+</dict>
+</plist>
