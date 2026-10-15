@@ -114,7 +114,29 @@
     }
     if (inside) layoutHost(inside);
   }
-  window.addEventListener('resize', function () { placeHost(); });
+  // Ascent(2026-10-15 Teru: 右下の帯が Ascent の「Next」に重なる)。画面の右下の角に出ているボタン(Next など)を探して、
+  // その一番左のボタンの左端 - 24px より左に帯を置く(QB と同じ考え方)。下端は画面の下から 12px のまま。ボタンが無ければ右下の隅。
+  var ASCENT_ZONE_H = 160, ASCENT_ZONE_X = 0.55;
+  function ascentRight(vw, vh, rects) {
+    var minLeft = vw;
+    rects.forEach(function (r) {
+      if (!(r.width > 0 && r.height > 0) || r.bottom < vh - ASCENT_ZONE_H || r.top > vh || r.right < vw * ASCENT_ZONE_X) return;
+      minLeft = Math.min(minLeft, r.left);
+    });
+    return minLeft < vw ? Math.max(12, Math.round(vw - minLeft + GAP)) : 12;
+  }
+  function placeAscentHost() {
+    if (isQb) return;
+    var rects = [];
+    document.querySelectorAll('button, a, [role="button"], input[type="button"], input[type="submit"]').forEach(function (el) {
+      if (!host.contains(el)) rects.push(el.getBoundingClientRect());
+    });
+    var css = 'all:initial;position:fixed;right:' + ascentRight(window.innerWidth, window.innerHeight, rects) + 'px;bottom:12px;z-index:2147483647;';
+    if (host.style.cssText !== css) host.style.cssText = css;
+  }
+  if (!isQb) setInterval(placeAscentHost, 1000);            // 画面が変わる(次の問題、見直し画面)たびに Next の位置が動くので 1 秒ごとに見直す
+  window.SatLoggerAscentRight = ascentRight;               // 試験用
+  window.addEventListener('resize', function () { placeHost(); placeAscentHost(); });
   ['pointerdown', 'pointerup', 'mousedown', 'mouseup', 'click', 'dblclick', 'touchstart', 'touchend', 'keydown', 'keyup', 'keypress', 'focusin', 'focusout'].forEach(function (type) {
     root.addEventListener(type, function (ev) { ev.stopPropagation(); });
   });
