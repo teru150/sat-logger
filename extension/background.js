@@ -90,6 +90,23 @@ async function setType(id, errorType) {
   }
 }
 
+// teru.page で編集した間違いの型の一覧を取る(GET /app/sat/types/list、合言葉。Teru 10/16)。取れたら覚えておき、取れない時は覚えた物を返す
+async function getTypes() {
+  var saved = await chrome.storage.local.get(['baseUrl', 'token', 'errorTypes']);
+  var cached = saved.errorTypes && Array.isArray(saved.errorTypes.RW) ? saved.errorTypes : null;
+  if (!saved.token) return cached ? Object.assign({ ok: true, cached: true }, cached) : { ok: false, reason: 'no token' };
+  var base = String(saved.baseUrl || DEFAULT_URL).replace(/\/+$/, '');
+  try {
+    var res = await fetch(satEndpoint(base, saved.token, 'types/list'), { headers: { 'Authorization': 'Bearer ' + saved.token } });
+    var body = await res.json();
+    if (res.ok && body && Array.isArray(body.RW) && Array.isArray(body.Math)) {
+      await chrome.storage.local.set({ errorTypes: { RW: body.RW, Math: body.Math } });
+      return { ok: true, RW: body.RW, Math: body.Math };
+    }
+  } catch (e) { /* 下で覚えた物を返す */ }
+  return cached ? Object.assign({ ok: true, cached: true }, cached) : { ok: false, reason: 'unavailable' };
+}
+
 chrome.runtime.onMessage.addListener(function (message, sender, sendResponse) {
   if (message && message.type === 'capture') {
     send(message.payload).then(sendResponse);
@@ -103,9 +120,18 @@ chrome.runtime.onMessage.addListener(function (message, sender, sendResponse) {
     undo(message.id).then(sendResponse);
     return true;
   }
+  if (message && (message.type === 'log' || message.type === 'logBatch')) getTypes();     // 記録のたびに型の一覧も取り直して覚える(画面は覚えた物を読む)
+  if (message && message.type === 'types') {
+    getTypes().then(sendResponse);
+    return true;
+  }
   if (message && message.type === 'settype') {
     setType(message.id, message.errorType).then(sendResponse);
     return true;
   }
   return false;
 });
+
+// 起動した時と入れた・更新した時にも、型の一覧を取って覚えておく
+chrome.runtime.onStartup && chrome.runtime.onStartup.addListener(function () { getTypes(); });
+chrome.runtime.onInstalled && chrome.runtime.onInstalled.addListener(function () { getTypes(); });

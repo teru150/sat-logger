@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "SAT ロガー",
-  "version": "0.7.3",
+  "version": "0.7.5",
   "description": "Ascent の見直し画面と Question Bank の問題を、1 問ずつ自動で teru.page の SAT 問題ログに記録する(画面をそのまま保存するボタンも残す)。",
   "permissions": [
     "storage",

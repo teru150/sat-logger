@@ -114,6 +114,60 @@
       await waitFor(document,function(){return !visibleModal();},1200);
     }
   }
+  // 本文のグラフ・表の図を PNG にする(10/16 Teru「グラフが見えない」: SVG の目盛りの文字だけが本文に入り、図そのものは残っていなかった)。
+  // 本文の塊の中の、文字を 3 つ以上持つ SVG か、幅 150px 以上の img を 1 枚。色や字の大きさはその場の計算済みの見た目を書き込んでから描く。
+  // 描けない時は '' を返す(記録は止めない)。
+  var FIG_STYLE = ['fill','stroke','stroke-width','stroke-dasharray','opacity','fill-opacity','font-size','font-family','font-weight','font-style','text-anchor','dominant-baseline','visibility','display'];
+  function figureNode(doc, item) {
+    var modal = doc.querySelector('.test-questions-modal[aria-hidden="false"]');
+    var panel = modal && modal.querySelector('.question-panel');
+    if (!panel) return null;
+    var svgs = Array.from(panel.querySelectorAll('svg')).filter(function (svg) {
+      var r = svg.getBoundingClientRect();
+      return svg.querySelectorAll('text').length >= 3 && r.width >= 150 && r.height >= 80 && !svg.closest('.answer-options');
+    });
+    if (svgs.length) return svgs.sort(function (a, b) { var x = a.getBoundingClientRect(), y = b.getBoundingClientRect(); return y.width * y.height - x.width * x.height; })[0];
+    return Array.from(panel.querySelectorAll('img')).find(function (img) { return img.naturalWidth >= 150 && !img.closest('.answer-options'); }) || null;
+  }
+  function svgToPng(svg) {
+    return new Promise(function (resolve) {
+      try {
+        var r = svg.getBoundingClientRect(), clone = svg.cloneNode(true);
+        var src = [svg].concat(Array.from(svg.querySelectorAll('*'))), dst = [clone].concat(Array.from(clone.querySelectorAll('*')));
+        src.forEach(function (el, i) {
+          var cs = getComputedStyle(el);
+          dst[i].setAttribute('style', FIG_STYLE.map(function (k) { return k + ':' + cs.getPropertyValue(k); }).join(';'));
+        });
+        clone.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
+        clone.setAttribute('width', Math.round(r.width)); clone.setAttribute('height', Math.round(r.height));
+        var url = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(new XMLSerializer().serializeToString(clone));
+        var img = new Image();
+        img.onload = function () {
+          var scale = Math.min(2, 1200 / Math.max(1, r.width)), c = document.createElement('canvas');
+          c.width = Math.round(r.width * scale); c.height = Math.round(r.height * scale);
+          var ctx = c.getContext('2d'); ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, c.width, c.height);
+          ctx.drawImage(img, 0, 0, c.width, c.height);
+          try { resolve(c.toDataURL('image/png')); } catch (e) { resolve(''); }
+        };
+        img.onerror = function () { resolve(''); };
+        img.src = url;
+      } catch (e) { resolve(''); }
+    });
+  }
+  function imgToPng(img) {
+    try {
+      var c = document.createElement('canvas'), scale = Math.min(1, 1200 / img.naturalWidth);
+      c.width = Math.round(img.naturalWidth * scale); c.height = Math.round(img.naturalHeight * scale);
+      var ctx = c.getContext('2d'); ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, c.width, c.height); ctx.drawImage(img, 0, 0, c.width, c.height);
+      return Promise.resolve(c.toDataURL('image/png'));
+    } catch (e) { return Promise.resolve(''); }           // 別のサイトの画像で描けない時
+  }
+  async function figurePng(item) {
+    var node = figureNode(document, item);
+    if (!node) return '';
+    var png = node.tagName.toLowerCase() === 'svg' ? await svgToPng(node) : await imgToPng(node);
+    return png.length <= 700000 ? png : '';
+  }
   async function readReview(item) {
     await closeReview();
     // React may replace the row when answers are shown; reacquire by section/module/number.
@@ -131,7 +185,10 @@
       var modal=visibleModal(), d=detail(document,item,root.SatLoggerParse);
       return modal && !modal.querySelector('.question-content')?.classList.contains('hide-answer') && d.answer;
     },1200);
-    return detail(document,item,root.SatLoggerParse);
+    var out=detail(document,item,root.SatLoggerParse);
+    var fig=await figurePng(item);
+    if(fig)out.figure=fig;                      // 図があれば PNG を添える(サーバーは写真の欄が空の時だけ保存する)
+    return out;
   }
   btn.addEventListener('click',async function() {
     if(busy) return;
@@ -167,10 +224,11 @@
       }
       await closeReview();
       var response=entries.length ? await send({action:'enrich',entries:entries,repair_math:repairMath===true},'enrichBatch') : null;
+      var figs=entries.filter(function(e){return e.figure;}).length;
       if(!response?.ok)throw new Error(response?.reason || firstError || '詳細を読み取れませんでした');
       var chosenCount=entries.filter(function(e){return e.chosen;}).length;
       var answerCount=entries.filter(function(e){return e.answer;}).length;
-      msg.textContent='詳細完了: '+response.updated+'問の空欄を補充 / 自分の答え'+chosenCount+'問・正解'+answerCount+'問 / 読取不可'+failed+'問 / 未登録'+response.missing+'問 / '+((Date.now()-started)/1000).toFixed(1)+'秒'+(firstError?' / '+firstError:'');
+      msg.textContent='詳細完了: '+response.updated+'問の空欄を補充 / 自分の答え'+chosenCount+'問・正解'+answerCount+'問 / 図'+figs+'枚(新しく保存'+(response.figures||0)+') / 読取不可'+failed+'問 / 未登録'+response.missing+'問 / '+((Date.now()-started)/1000).toFixed(1)+'秒'+(firstError?' / '+firstError:'');
     } catch(e) { msg.textContent='詳細停止: '+e.message+'。既存の記録は消していません'; }
   }
   detailBtn.addEventListener('click',async function() {

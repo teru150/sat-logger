@@ -36,13 +36,15 @@
     '#etype{max-width:100%;padding:6px;border:1px solid #fff;border-radius:4px;background:#0f0f1c;color:#fff;font:inherit}#typerow{width:100%}#typerow[hidden]{display:none}' +
     '.qb .elapsed{font-weight:600}.qb[data-over="1"] .elapsed{color:#ff6b6b;font-weight:800}.qb[data-way="1"]{background:#7a1f1f;border-color:#ff6b6b}' +
     '.qb input{width:64px;padding:6px;border:1px solid #fff;border-radius:4px;background:#0f0f1c;color:#fff;font:inherit}' +
+    '#arow{display:flex;gap:6px;align-items:center;flex-wrap:wrap;padding:8px 10px;border:1px solid #fff;border-radius:6px;background:#1c1c2e}#arow[hidden]{display:none}' +
+    '#atype{max-width:280px;padding:6px;border:1px solid #fff;border-radius:4px;background:#0f0f1c;color:#fff;font:inherit}' +
     '</style><div class="wrap"><div class="msg" id="msg" role="status"></div>' +
+    '<div id="arow" hidden><span id="alabel">間違いの型(任意):</span><select id="atype"></select></div>' +
     '<div class="qb" id="qb"><div class="head"><b>この問題を記録</b><span class="hint" id="hint"></span>' +
     '<button type="button" id="fold" aria-expanded="true" title="帯を小さく畳みます。解説のチェックを外すか、別の問題を開くと自動で元の大きさに戻ります">折りたたむ ▾</button></div><span>選んだ答え:</span>' +
     '<button type="button" data-l="A">A</button><button type="button" data-l="B">B</button><button type="button" data-l="C">C</button><button type="button" data-l="D">D</button>' +
     '<span id="ansrow" style="display:none;width:100%">解説が出ていないので、正解も: <button type="button" data-a="A">A</button><button type="button" data-a="B">B</button><button type="button" data-a="C">C</button><button type="button" data-a="D">D</button></span>' +
-    '<span id="typerow" hidden>間違いの型(任意): <select id="etype"><option value="">選ばない</option>' +
-      ((S && S.ERROR_TYPES) || []).map(function (t) { return '<option>' + t + '</option>'; }).join('') + '</select></span>' +
+    '<span id="typerow" hidden>間違いの型(任意): <select id="etype"></select></span>' +
     '<span>秒 <input id="sec" type="number" min="0" max="7200" placeholder="?"></span><span class="elapsed" id="elapsed" role="timer"></span>' +
     '<span>目標 <input id="goal" type="number" min="1" max="600" placeholder="秒" title="問題の型から自動で入ります。手で変えるとその型の目標として覚えます。経過が目標を超えると経過の文字が赤く、目標より 30 秒超えると帯が赤くなります(音は出ません)"> <small id="goalnote"></small></span>' +
     '<button type="button" id="rec" disabled>記録</button>' +
@@ -143,8 +145,50 @@
   root.addEventListener('mousedown', function (ev) {
     if (ev.target.closest && ev.target.closest('button')) ev.preventDefault();      // ボタンを押しても、ダイアログの中の焦点を動かさない
   });
+  // 間違いの型の一覧: teru.page で編集した物(RW と数学)を取りに行き、取れなければ組み込みの一覧(10/16 Teru)
+  var typeLists = { RW: (S && S.ERROR_TYPES) || [], Math: [] };
+  function fillTypes(sel, mathFirst) {
+    var keep = sel.value, groups = mathFirst ? [['数学', typeLists.Math], ['RW', typeLists.RW]] : [['RW', typeLists.RW], ['数学', typeLists.Math]];
+    sel.replaceChildren(new Option('選ばない', ''));
+    groups.forEach(function (g) {
+      if (!g[1].length) return;
+      var og = document.createElement('optgroup'); og.label = g[0];
+      g[1].forEach(function (t) { og.appendChild(new Option(t, t)); });
+      sel.appendChild(og);
+    });
+    sel.value = keep;
+  }
   var why = $('why'), ansRow = $('ansrow'), msg = $('msg'), undoBtn = $('undo'), go = $('go'), qbBox = $('qb'), secInput = $('sec'), recBtn = $('rec'), elapsedEl = $('elapsed'), goalInput = $('goal'), goalNote = $('goalnote'), foldBtn = $('fold'), hintEl = $('hint'), typeRow = $('typerow'), typeSel = $('etype'), timer = null;
 
+  var aRow = $('arow'), aSel = $('atype'), aLabel = $('alabel'), aTimer = null, aRec = null;
+  fillTypes(typeSel, false); fillTypes(aSel, false);
+  // 一覧は裏の部分(background.js)が teru.page から取って chrome.storage に覚えておく。ここは覚えた物を読むだけ(画面からは送らない)
+  function loadTypes() {
+    try {
+      chrome.storage.local.get(['errorTypes']).then(function (v) {
+        var t = v && v.errorTypes;
+        if (t && Array.isArray(t.RW) && t.RW.length) { typeLists = { RW: t.RW, Math: Array.isArray(t.Math) ? t.Math : [] }; fillTypes(typeSel, false); if (!aRec) fillTypes(aSel, false); }
+      }, function () {});
+    } catch (e) { /* 組み込みの一覧のまま */ }
+  }
+  loadTypes();
+  // Ascent: 誤答を自動で記録した後、10 分間だけ型を選べる(サーバーは記録から 10 分以内の行だけ受ける)
+  function offerAscentType(id, data) {
+    loadTypes();
+    aRec = { id: id, number: data.number };
+    fillTypes(aSel, data.field === '数学'); aSel.value = ''; aSel.disabled = false;
+    aLabel.textContent = 'Q' + data.number + ' の間違いの型(任意):';
+    aRow.hidden = false;
+    clearTimeout(aTimer); aTimer = setTimeout(function () { aRow.hidden = true; aRec = null; }, 10 * 60 * 1000);
+  }
+  aSel.addEventListener('change', function () {
+    if (!aRec || !aSel.value) return;
+    var rec = aRec, picked = aSel.value; aSel.disabled = true;
+    ask({ type: 'settype', id: rec.id, errorType: picked }).then(function (res) {
+      aSel.disabled = false;
+      show(res && res.ok ? 'Q' + rec.number + ' に間違いの型を付けた(' + picked + ')' : '型を付けられなかった: ' + ((res && res.reason) || ''), res && res.ok ? 'ok' : 'bad');
+    });
+  });
   function show(text, kind, ms) {
     msg.textContent = text; msg.className = 'msg ' + kind;
     clearTimeout(timer); timer = setTimeout(function () { msg.className = 'msg'; }, ms || (kind === 'bad' ? 14000 : 5000));
@@ -230,7 +274,10 @@
     remember(r.key);
     ask({ type: 'log', payload: r.data }).then(function (res) {
       if (!report(res, 'Ascent Q' + r.data.number + ' ' + r.data.correct)) delete sent[r.key + '@' + today()];   // 失敗は覚えず、次の変化でやり直す
-      else armUndo(res, r.key);
+      else {
+        armUndo(res, r.key);
+        if (r.data.correct === '誤' && res.entry && res.entry.id && !res.duplicate) offerAscentType(res.entry.id, r.data);
+      }
     });
   }
 
